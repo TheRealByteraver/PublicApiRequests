@@ -1,24 +1,49 @@
+// ****************************************************************************
+// *                                                                          *
+// *  Variable Definitions                                                    *
+// *                                                                          *
+// ****************************************************************************
+
 // As per the requirements, we fetch 12 people from the api:
 const nrEmployeesToFetch = 12;
 
 // Details of the API and its parameters
 const api = {
+    // We specify the api version so this script will not break on api update
     url: 'https://randomuser.me/api/1.3/',
-    reqDetails: 'inc=picture,name,email,location,cell,dob',
-    employeeCnt: `results=${nrEmployeesToFetch}`,
-    nationalities: 'nat=gb,us'
+    parameters: [
+        // define what data we are interested in
+        'inc=picture,name,email,location,cell,dob', 
+        // define how many objects we would like to receive
+        `results=${nrEmployeesToFetch}`,            
+        // restrict nationalities to english (for the exceeds requirement)
+        'nat=gb,us'                                
+    ]
 }
 
 // The 'peopleData' array will hold the people objects we fetched from the api
 let peopleData = [];
 
+// The 'galleryDiv' is the element into which we will inject the 'card' 
+// elements (see the 'creatCard' function below)
 const galleryDiv = document.getElementById('gallery');
 
-// The following function takes in details about a person (a javascript object)
-// and returns an html string containing the persons data. The 'index' 
-// parameter is the index of this person in the 'peopleData' array. This way
-// we can quickly grab additional information about this person from the array
-// if needed (i.e. when the user clicks the card and the modal gets displayed)
+// ****************************************************************************
+// *                                                                          *
+// *  Function Definitions                                                    *
+// *                                                                          *
+// ****************************************************************************
+
+/**
+ * Takes in details about a person and returns a business card in the form of
+ * a html string The 'index' parameter is the index of this person in the 
+ * 'peopleData' array. This way we can quickly grab additional information 
+ * about this person from the array if needed (i.e. when the user clicks the 
+ * card and the modal gets displayed)
+ *
+ * @param {object} person - The details of the person
+ * @returns {string} - The business card (html)
+ */
 function createCard(person) {
     return `
         <div class="card" data-index="${person.index}">
@@ -39,12 +64,17 @@ function createCard(person) {
     `;
 }
 
-// The following function takes in details about a person (a javascript object)
-// and returns an html string containing the persons data. Same as createCard 
-// then, but the 'modal' contains more details. We store the index here as 
-// well, so it is easy to navigate forwards and backwards through the 
-// 'peopleData' array when the user clicks the prev/ next buttons on the modal
-function createModal(person) {
+/**
+ * Takes in details about a person and returns the modal containing the persons 
+ * data as a html string. Same as 'createCard' then, but the 'modal' contains 
+ * more details. We store the index here as well, so it is easy to navigate 
+ * forwards and backwards through the 'peopleData' array when the user clicks 
+ * the prev/ next buttons on the modal
+ *
+ * @param {object} person - The details of the person
+ * @returns {string} - The modal (html)
+ */
+ function createModal(person) {
     return `
         <div class="modal-container">
             <div class="modal">
@@ -52,8 +82,7 @@ function createModal(person) {
                     <strong>X</strong>
                 </button>
                 <div class="modal-info-container">
-                    <img 
-                        class="modal-img" 
+                    <img class="modal-img" 
                         src="${person.imageSrc}" 
                         alt="profile picture"
                     >
@@ -85,10 +114,16 @@ function createModal(person) {
     `;
 }
 
-// The following function updates the contents of the modal using the data of
-// the parameter "person". It also keeps track of the index in the 'peopleData' 
-// array by storing the 'index' parameter in the html as a data attribute.
+/**
+ * Updates the contents of the modal using the data of the parameter "person". 
+ * It also keeps track of the index in the 'peopleData' array by storing the 
+ * 'index' parameter in the html as a data attribute.
+ *
+ * @param {object} person - The details of the person
+ * @returns {void} - Does not return anything
+ */
 function updateModalContent(person) {
+    // select the html elements inside the model that need to be updated
     const modalContainerDiv = document.querySelector('.modal-container');
     const img = modalContainerDiv.querySelector('img');
     const nameH3 = modalContainerDiv.querySelector('#name');
@@ -96,6 +131,7 @@ function updateModalContent(person) {
     const modalBtnContainerDiv = 
         modalContainerDiv.querySelector('.modal-btn-container');
 
+    // update the html elements with the details from 'person'
     img.src = person.imageSrc;
     nameH3.innerHTML = person.name;
     paragraphs[0].innerHTML = person.email;
@@ -107,55 +143,49 @@ function updateModalContent(person) {
     modalBtnContainerDiv.dataset.index = `${person.index}`;
 }
 
-// Search function
+/**
+ * Adds the search functionality on the top right of the screen. Also adds the
+ * event listener including the search logic
+ *
+ * @param {void} - Takes no parameters
+ * @returns {void} - Does not return anything
+ */
 function addSearch() {
     const searchContainerDiv = document.querySelector('.search-container');
     searchContainerDiv.innerHTML = 
         `<form action="#" method="get">
-            <input 
-                type="search" 
-                id="search-input" 
-                class="search-input" 
+            <input type="search" id="search-input" class="search-input" 
                 placeholder="Search...">
-            <input 
-                type="submit" 
-                value="&#x1F50D;" 
-                id="search-submit" 
+            <input type="submit" value="&#x1F50D;" id="search-submit" 
                 class="search-submit">
         </form>`;
 
     document.querySelector('form').addEventListener('submit', (event) => {
+        // we don't want the form to refresh the page on submission
         event.preventDefault();
-        let input = document.getElementById('search-input').value.toUpperCase();
-        let indices = [];
-
-        if(input.length === 0) {
-
-        }
-
-
-        for(let i = 0; i < peopleData.length; i++) {
-            let person = peopleData[i];
+        // Take the input from the user and transform to uppercase for easy searching
+        const input = document.getElementById('search-input').value.toUpperCase();
+        let html = '';
+        for(person of peopleData) {            
             const name = person.name.toUpperCase();
             if(name.includes(input)) {
-                indices.push(i);
+                html += createCard(person);
             } 
         }
-
-        let html = '';
-        if(indices.length  === 0) {
+        if(html.length  === 0) {
             html = '<h3>Your search yielded no results</h3>';
-        } else {
-            for( let i = 0; i < indices.length; i++) {
-                const index = indices[i];
-                html += createCard(peopleData[index]);
-            }
-        }
+        } 
         galleryDiv.innerHTML = html;
     });
 }
 
-// Fetch helper function for error handling
+/**
+ * Fetch helper function for error handling
+ *
+ * @param {response} - takes the response from a fetch request
+ * @returns {promise} - returns a promise that resolves or rejects
+ *                      depending on whether the fetch succeeded
+ */
 function checkStatus(response) {
     if(response.ok) {
         return Promise.resolve(response);
@@ -164,8 +194,15 @@ function checkStatus(response) {
     }
 }
 
-// fetchData needs an url and returns a promise that resolves to the requested
-// data as a javascript object
+
+/**
+ * fetchData needs an url and returns a promise that resolves to the requested
+ * data as a javascript object (rather than a json string)
+ *
+ * @param {String} url - the full url of the api, parameters included
+ * @returns {promise} - returns a promise that resolves or rejects
+ *                      depending on whether the fetch succeeded
+ */
 function fetchData(url) {
     return fetch(url)
         // only continue if we got http status 200 OK:
@@ -178,7 +215,7 @@ function fetchData(url) {
 
 // this little helper function returns the full api url
 function getAPIString(api) {
-    return `${api.url}?${api.reqDetails}&${api.employeeCnt}&${api.nationalities}`;
+    return `${api.url}?${api.parameters.join('&')}`;
 }
 
 // This little helper function reformats the phone number to the desired format
@@ -199,11 +236,17 @@ function reformatBirthDay(birthday) {
     return retStr;
 }
 
-// this helper function takes the array of people (provided as a parameter)
-// and stores it in the global variable 'peopleData' for later use. We only
-// keep the data we need. Notice how each object knows its own location
-// (stored as 'index') inside the 'peopleData' array. This is done so we 
-// can navigate through the array easily later on.
+/**
+ * Takes the array of people as a parameter and stores the data in the global 
+ * variable 'peopleData' for later use. We only keep the data we need. Notice
+ * how each object knows its own location inside the array 'peopleData' since 
+ * we store it inside the object as 'index'. This is done so we can navigate 
+ * through the array easily later on.
+ *
+ * @param {Array of objects} peopleArray - the data returned from the api
+ * @returns {promise} - returns a promise that resolves to the newly arranged
+ *                      data: the 'peopleData' array.
+ */
 function savePeopleData(peopleArray) {
     for(let i = 0; i < peopleArray.length; i++ ) {
         const person = peopleArray[i];
@@ -224,10 +267,15 @@ function savePeopleData(peopleArray) {
     return peopleData;
 }
 
-// this little helper function will take a 'people' javascript object array
-// and insert cards made with 'createCard' into the html document. It returns
-// the 'people' array so that further "then" statements can be chained to the
-// calling promise.
+
+/**
+ * Takes a 'people' javascript object array and insert cards made with the
+ * 'createCard' function into the DOM. It returns its parameter unmodified so 
+ * that further ".then()" statements can be chained to the calling promise.
+ *
+ * @param {Array of objects} people - the reworked data returned from the api
+ * @returns {Array of objects} - returns the same array
+ */
 function insertPeopleToDom(people) {
     galleryDiv.innerHTML = '';
     for(let i = 0; i < people.length; i++) {
@@ -235,6 +283,15 @@ function insertPeopleToDom(people) {
     }        
     return people;
 }
+
+// ****************************************************************************
+// ****************************************************************************
+// **                                                                        **
+// **  Start of the script                                                   **
+// **                                                                        **
+// ****************************************************************************
+// ****************************************************************************
+
 
 galleryDiv.innerHTML = '<h1>Loading Data...</h1>';
 
