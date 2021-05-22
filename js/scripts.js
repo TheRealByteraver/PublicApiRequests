@@ -1,75 +1,50 @@
 // As per the requirements, we fetch 12 people from the api:
 const nrEmployeesToFetch = 12;
 
-// The 'peopleData' array will hold the people objects we fetch from the api
+// Details of the API and its parameters
+const api = {
+    url: 'https://randomuser.me/api/1.3/',
+    reqDetails: 'inc=picture,name,email,location,cell,dob',
+    employeeCnt: `results=${nrEmployeesToFetch}`,
+    nationalities: 'nat=gb,us'
+}
+
+// The 'peopleData' array will hold the people objects we fetched from the api
 let peopleData = [];
 
-const searchContainerDiv = document.querySelector('.search-container');
 const galleryDiv = document.getElementById('gallery');
 
-// This little helper function reformats the phone number to the desired format
-function reformatCellNr(cellNr) {
-    // keep digits only using regex & replace: 
-    let retStr = cellNr.replace(/[^\d]/g, ''); 
-    // And now we recreate the string in the desired format:
-    retStr = `(${retStr.slice(0, 3)}) ${retStr.slice(3,6)}-${retStr.slice(6,retStr.length)}`;
-    return retStr;
-}
-
-// This little helper function reformats the birthday in the desired format
-function reformatBirthDay(birthday) {
-    // we only need the date, not the time:
-    let retStr = birthday.substring(0,10);
-        // let's put the year, month and day in the desired order:
-        retStr = retStr.replace(/^\d{2}(\d{2})-(\d{2})-(\d{2})/, '$2/$3/$1');
-    return retStr;
-}
-
 // The following function takes in details about a person (a javascript object)
-// and returns an html string containing the persons data.
-function createCard(person, index) {
+// and returns an html string containing the persons data. The 'index' 
+// parameter is the index of this person in the 'peopleData' array. This way
+// we can quickly grab additional information about this person from the array
+// if needed (i.e. when the user clicks the card and the modal gets displayed)
+function createCard(person) {
     return `
-        <div class="card" data-index="${index}">
-            <div class="card-img-container">
-                <img class="card-img" 
-                src="${person.picture.large}" alt="profile picture">
+        <div class="card" data-index="${person.index}">
+            <div class="card-img-container" data-index="${person.index}">
+                <img class="card-img"  data-index="${person.index}"
+                src="${person.imageSrc}" alt="profile picture">
             </div>
-            <div class="card-info-container">
-                <h3 id="name" class="card-name cap">
-                  ${person.name.first} ${person.name.last}
+            <div class="card-info-container" data-index="${person.index}">
+                <h3 id="name" class="card-name cap"  data-index="${person.index}">
+                  ${person.name}
                 </h3>
-                <p class="card-text">${person.email}</p>
-                <p class="card-text cap">
-                    ${person.location.city}, ${person.location.state}
+                <p class="card-text" data-index="${person.index}">${person.email}</p>
+                <p class="card-text cap" data-index="${person.index}">
+                    ${person.city}, ${person.state}
                 </p>
             </div>
         </div>        
     `;
 }
 
-function updateModalContent(person, index) {
-    const modalContainerDiv = document.querySelector('.modal-container');
-    const img = modalContainerDiv.querySelector('img');
-    const nameH3 = modalContainerDiv.querySelector('#name');
-    const paragraphs = modalContainerDiv.querySelectorAll('p');
-    const modalBtnContainerDiv = modalContainerDiv.querySelector('.modal-btn-container');
-
-    img.src = person.picture.large;
-    nameH3.innerHTML = `${person.name.first} ${person.name.last}`;
-    paragraphs[0].innerHTML = person.email;
-    paragraphs[1].innerHTML = person.location.city;
-    paragraphs[2].innerHTML = reformatCellNr(person.cell); 
-    paragraphs[3].innerHTML =
-        `${person.location.street.number} ${person.location.street.name}, ` +
-        `${person.location.state}, ${person.location.postcode}`;
-    paragraphs[4].innerHTML = `Birthday: ${reformatBirthDay(person.dob.date)}`; 
-    modalBtnContainerDiv.dataset.index = `${index}`;
-}
-
 // The following function takes in details about a person (a javascript object)
 // and returns an html string containing the persons data. Same as createCard 
-// then, but the 'modal' contains more details
-function createModal(person, index) {
+// then, but the 'modal' contains more details. We store the index here as 
+// well, so it is easy to navigate forwards and backwards through the 
+// 'peopleData' array when the user clicks the prev/ next buttons on the modal
+function createModal(person) {
     return `
         <div class="modal-container">
             <div class="modal">
@@ -79,27 +54,26 @@ function createModal(person, index) {
                 <div class="modal-info-container">
                     <img 
                         class="modal-img" 
-                        src="${person.picture.large}" 
+                        src="${person.imageSrc}" 
                         alt="profile picture"
                     >
                     <h3 id="name" class="modal-name cap">
-                        ${person.name.first} ${person.name.last}
+                        ${person.name}
                     </h3>
                     <p class="modal-text">${person.email}</p>
-                    <p class="modal-text cap">${person.location.city}</p>
+                    <p class="modal-text cap">${person.city}</p>
                     <hr>
                     <p class="modal-text">${reformatCellNr(person.cell)}</p>
                     <p class="modal-text">
-                        ${person.location.street.number} ${person.location.street.name}, 
-                        ${person.location.state}, ${person.location.postcode}
+                        ${person.number} ${person.street}, 
+                        ${person.state}, ${person.postcode}
                     </p>
                     <p class="modal-text">
-                        Birthday: ${reformatBirthDay(person.dob.date)}
+                        Birthday: ${reformatBirthDay(person.birthday)}
                     </p>
                 </div>
             </div>
-
-            <div class="modal-btn-container" data-index="${index}">
+            <div class="modal-btn-container" data-index="${person.index}">
                 <button type="button" id="modal-prev" class="modal-prev btn">
                     Prev
                 </button>
@@ -109,6 +83,76 @@ function createModal(person, index) {
             </div>
         </div>
     `;
+}
+
+// The following function updates the contents of the modal using the data of
+// the parameter "person". It also keeps track of the index in the 'peopleData' 
+// array by storing the 'index' parameter in the html as a data attribute.
+function updateModalContent(person) {
+    const modalContainerDiv = document.querySelector('.modal-container');
+    const img = modalContainerDiv.querySelector('img');
+    const nameH3 = modalContainerDiv.querySelector('#name');
+    const paragraphs = modalContainerDiv.querySelectorAll('p');
+    const modalBtnContainerDiv = 
+        modalContainerDiv.querySelector('.modal-btn-container');
+
+    img.src = person.imageSrc;
+    nameH3.innerHTML = person.name;
+    paragraphs[0].innerHTML = person.email;
+    paragraphs[1].innerHTML = person.city;
+    paragraphs[2].innerHTML = person.cell; 
+    paragraphs[3].innerHTML = `${person.number} ${person.street}, ` + 
+                              `${person.state}, ${person.postcode}`;
+    paragraphs[4].innerHTML = `Birthday: ${person.birthday}`; 
+    modalBtnContainerDiv.dataset.index = `${person.index}`;
+}
+
+// Search function
+function addSearch() {
+    const searchContainerDiv = document.querySelector('.search-container');
+    searchContainerDiv.innerHTML = 
+        `<form action="#" method="get">
+            <input 
+                type="search" 
+                id="search-input" 
+                class="search-input" 
+                placeholder="Search...">
+            <input 
+                type="submit" 
+                value="&#x1F50D;" 
+                id="search-submit" 
+                class="search-submit">
+        </form>`;
+
+    document.querySelector('form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        let input = document.getElementById('search-input').value.toUpperCase();
+        let indices = [];
+
+        if(input.length === 0) {
+
+        }
+
+
+        for(let i = 0; i < peopleData.length; i++) {
+            let person = peopleData[i];
+            const name = person.name.toUpperCase();
+            if(name.includes(input)) {
+                indices.push(i);
+            } 
+        }
+
+        let html = '';
+        if(indices.length  === 0) {
+            html = '<h3>Your search yielded no results</h3>';
+        } else {
+            for( let i = 0; i < indices.length; i++) {
+                const index = indices[i];
+                html += createCard(peopleData[index]);
+            }
+        }
+        galleryDiv.innerHTML = html;
+    });
 }
 
 // Fetch helper function for error handling
@@ -132,22 +176,52 @@ function fetchData(url) {
         .catch(error => console.log('Looks like there was a problem!', error));
 }
 
-// Details of the API and its parameters
-const api = {
-    url: 'https://randomuser.me/api/1.3/',
-    reqDetails: 'inc=picture,name,email,location,cell,dob',
-    employeeCnt: `results=${nrEmployeesToFetch}`
-}
-
 // this little helper function returns the full api url
 function getAPIString(api) {
-    return `${api.url}?${api.reqDetails}&${api.employeeCnt}`;
+    return `${api.url}?${api.reqDetails}&${api.employeeCnt}&${api.nationalities}`;
 }
 
-// this little helper function saves 
+// This little helper function reformats the phone number to the desired format
+function reformatCellNr(cellNr) {
+    // keep digits only using regex & replace: 
+    let retStr = cellNr.replace(/[^\d]/g, ''); 
+    // And now we recreate the string in the desired format:
+    retStr = `(${retStr.slice(0, 3)}) ${retStr.slice(3,6)}-${retStr.slice(6,retStr.length)}`;
+    return retStr;
+}
+
+// This little helper function reformats the birthday in the desired format
+function reformatBirthDay(birthday) {
+    // we only need the date, not the time:
+    let retStr = birthday.substring(0,10);
+        // let's put the year, month and day in the desired order:
+        retStr = retStr.replace(/^\d{2}(\d{2})-(\d{2})-(\d{2})/, '$2/$3/$1');
+    return retStr;
+}
+
+// this helper function takes the array of people (provided as a parameter)
+// and stores it in the global variable 'peopleData' for later use. We only
+// keep the data we need. Notice how each object knows its own location
+// (stored as 'index') inside the 'peopleData' array. This is done so we 
+// can navigate through the array easily later on.
 function savePeopleData(peopleArray) {
-    peopleData = [...peopleArray];
-    return peopleArray;
+    for(let i = 0; i < peopleArray.length; i++ ) {
+        const person = peopleArray[i];
+        peopleData.push({
+            'index': i,
+            'imageSrc': person.picture.large,
+            'name': `${person.name.first} ${person.name.last}`,
+            'email': person.email,
+            'birthday': reformatBirthDay(person.dob.date),
+            'cell': reformatCellNr(person.cell),
+            'street': person.location.street.name,
+            'number': person.location.street.number,
+            'city': person.location.city,
+            'postcode': person.location.postcode,
+            'state': person.location.state
+        });
+    }
+    return peopleData;
 }
 
 // this little helper function will take a 'people' javascript object array
@@ -155,40 +229,16 @@ function savePeopleData(peopleArray) {
 // the 'people' array so that further "then" statements can be chained to the
 // calling promise.
 function insertPeopleToDom(people) {
+    galleryDiv.innerHTML = '';
     for(let i = 0; i < people.length; i++) {
-        galleryDiv.insertAdjacentHTML('beforeend', createCard(people[i], i));
-        galleryDiv.lastElementChild.addEventListener('click', (event) => {
-            galleryDiv.insertAdjacentHTML(
-                'beforeend', 
-                createModal(peopleData[event.currentTarget.dataset.index], i)
-            );
-            const modalCloseButton = document.getElementById('modal-close-btn');            
-            modalCloseButton.addEventListener('click', () => {
-                modalCloseButton.parentNode.parentNode.remove();
-            });
-            // exceeds:
-            const navButtons = [
-                document.getElementById('modal-prev'),
-                document.getElementById('modal-next')
-            ];
-            for(btn of navButtons) {
-                btn.addEventListener('click', (event) => {
-                    let index = parseInt(event.target.parentNode.dataset.index);
-                    if(event.target.id === 'modal-prev' && index > 0) {                        
-                        index--;
-                    } else if(event.target.id === 'modal-next' && index < (peopleData.length - 1)) { 
-                        index++;
-                    }
-                    updateModalContent(peopleData[index], index);
-                });
-            }
-        });
+        galleryDiv.insertAdjacentHTML('beforeend', createCard(people[i]));
     }        
     return people;
 }
 
-// Finally we fetch the data from the api and display the people by adding
-// them to the DOM:
+galleryDiv.innerHTML = '<h1>Loading Data...</h1>';
+
+// Fetch the data from the api and display the cards:
 fetchData(getAPIString(api))
     // we take what we need from the response and tail it to our needs
     .then(response => savePeopleData(response.results))
@@ -197,3 +247,38 @@ fetchData(getAPIString(api))
     // catch failures with fetch (network error, etc):
     .catch(error => console.log('Looks like there was a problem!', error));
 
+// Add search functionality    
+addSearch();
+
+// Add the event listener that shows the modal when the user clicks on a card
+galleryDiv.addEventListener('click', (event) => {
+    const index = event.target.dataset.index;    
+    // exit function if index is not defined
+    if(!index) {
+        return;
+    }
+    galleryDiv.insertAdjacentHTML('beforeend', createModal(peopleData[index]));
+    const modalCloseButton = document.getElementById('modal-close-btn');            
+    modalCloseButton.addEventListener('click', () => {
+        modalCloseButton.parentNode.parentNode.remove();
+    });
+    // add the event listeners for the navigation buttons in the modal
+    const navButtons = [
+        document.getElementById('modal-prev'),
+        document.getElementById('modal-next')
+    ];
+    for(btn of navButtons) {
+        btn.addEventListener('click', (event) => {
+            let index = parseInt(event.target.parentNode.dataset.index);
+            if(event.target.id === 'modal-prev' && index > 0) {                        
+                index--;
+                updateModalContent(peopleData[index]);
+            } 
+            else if(event.target.id === 'modal-next' && 
+                    index < (peopleData.length - 1)) { 
+                index++;
+                updateModalContent(peopleData[index]);
+            }                    
+        });
+    }
+});
