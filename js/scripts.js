@@ -292,7 +292,7 @@ function insertPeopleToDom(people) {
 // ****************************************************************************
 // ****************************************************************************
 
-
+// Give a loading screen to the user
 galleryDiv.innerHTML = '<h1>Loading Data...</h1>';
 
 // Fetch the data from the api and display the cards:
@@ -309,9 +309,11 @@ addSearch();
 
 // Add the event listener that shows the modal when the user clicks on a card
 galleryDiv.addEventListener('click', (event) => {
+    const modalContainerDivs = document.getElementsByClassName('modal-container');
+    const modalIsOpen = modalContainerDivs.length > 0;
     const index = event.target.dataset.index;    
-    // exit function if index is not defined
-    if(!index) {
+    // exit function if index is not defined or if the modal is already open
+    if(!index || modalIsOpen) {
         return;
     }
     galleryDiv.insertAdjacentHTML('beforeend', createModal(peopleData[index]));
@@ -326,6 +328,7 @@ galleryDiv.addEventListener('click', (event) => {
     ];
     for(btn of navButtons) {
         btn.addEventListener('click', (event) => {
+            console.log('adding event listener for ', btn); // DEBUG
             let index = parseInt(event.target.parentNode.dataset.index);
             if(event.target.id === 'modal-prev' && index > 0) {                        
                 index--;
